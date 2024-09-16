@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-entrypoint
+spec:
+  selector:
+    matchLabels:
+      app: demo-entrypoint
+  replicas: 1 # tells deployment to run 2 pods matching the template
+  template:
+    metadata:
+      labels:
+        app: demo-entrypoint
+    spec:
+      restartPolicy: Always
+      containers:
+      - name: demo-entrypoint
+        image: demo-entrypoint:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - name: config-volume
+          mountPath: /userap/application.yml
+          subPath: application.yml
+      volumes:
+        - name: config-volume
+          configMap:
+            name: demo-config
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-config
+data:
+  application.yml: |
+    server:
+      port: 8080
+      shutdown: graceful
+    spring:
+      lifecycle:
+        timeout-per-shutdown-phase: 10s
+
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: "*"
+      endpoint:
+        shutdown:
+          enabled: true
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-entrypoint-np-svc
+spec:
+  type: NodePort
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30001
+  selector:
+    app: demo-entrypoint
